@@ -83,30 +83,9 @@ open index.html
 
 ## Dashboard Preview
 
-![Sales & Revenue Dashboard Screenshot](screenshot.png)
+<img width="1920" height="1020" alt="Screenshot 2026-05-14 094152" src="https://github.com/user-attachments/assets/35abeda9-f51a-4cc5-9c1b-011c44a7ff30" />
 
----
-
-## How to Use the CSV Import
-
-1. Prepare your `.csv` file with the columns listed above
-2. Open the dashboard in your browser
-3. Drag and drop the file onto the upload area — **or** click **"Choose file"** to browse
-4. All KPIs, charts, and the product table update automatically from your data
-5. Use the **Category** filter to slice by product type
-6. Click **"Reset to sample"** at any time to return to the built-in demo data
-
----
-
-## Project Structure
-
-```
-sales-dashboard/
-│
-├── index.html              # Main dashboard (HTML + CSS + JS, all-in-one)
-├── screenshot.png          # Dashboard preview image
-└── README.md               # Project documentation
-```
+<img width="1920" height="1020" alt="Screenshot 2026-05-14 094216" src="https://github.com/user-attachments/assets/7d4c9593-ffe6-4785-ba10-25de3d2fbf65" />
 
 ---
 
