@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sales & Revenue Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #f4f5f7;
+      --surface: #ffffff;
+      --surface2: #f0f1f4;
+      --border: rgba(0,0,0,0.08);
+      --text: #1a1b1e;
+      --text2: #6b7280;
+      --text3: #9ca3af;
+      --blue: #2563eb;
+      --blue-light: #dbeafe;
+      --green: #16a34a;
+      --green-light: #dcfce7;
+      --amber: #d97706;
+      --amber-light: #fef3c7;
+      --red: #dc2626;
+      --red-light: #fee2e2;
+      --radius: 12px;
+      --radius-sm: 8px;
+    }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 24px;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    header h1 { font-size: 22px; font-weight: 600; letter-spacing: -0.3px; }
+    header p  { font-size: 13px; color: var(--text2); margin-top: 2px; }
+
+    .status-pill {
+      font-size: 12px; font-weight: 500;
+      padding: 4px 10px; border-radius: 20px;
+      display: inline-flex; align-items: center; gap: 5px;
+    }
+    .pill-sample { background: var(--amber-light); color: var(--amber); }
+    .pill-csv    { background: var(--green-light);  color: var(--green); }
+
+    /* Upload Bar */
+    .upload-bar {
+      background: var(--surface);
+      border: 1.5px dashed rgba(37,99,235,0.35);
+      border-radius: var(--radius);
+      padding: 18px 24px;
+      margin-bottom: 14px;
+      display: flex; align-items: center;
+      justify-content: space-between;
+      gap: 16px; flex-wrap: wrap;
+      transition: border-color 0.2s, background 0.2s;
+      cursor: pointer;
+    }
+    .upload-bar.drag-over { border-color: var(--blue); background: #eff6ff; }
+    .upload-bar.loaded    { border-style: solid; border-color: rgba(22,163,74,0.4); background: #f0fdf4; }
+
+    .upload-left { display: flex; align-items: center; gap: 14px; }
+
+    .upload-icon {
+      width: 40px; height: 40px;
+      border-radius: 10px;
+      background: var(--blue-light);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .upload-icon svg { width: 20px; height: 20px; }
+
+    .upload-text strong { font-size: 14px; font-weight: 600; display: block; }
+    .upload-text span   { font-size: 12px; color: var(--text2); }
+
+    .upload-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+    .btn-primary {
+      font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500;
+      padding: 8px 16px; border-radius: var(--radius-sm);
+      border: 1px solid var(--blue); background: var(--blue);
+      color: #fff; cursor: pointer; transition: opacity 0.15s;
+    }
+    .btn-primary:hover { opacity: 0.88; }
+
+    .btn-ghost {
+      font-family: 'DM Sans', sans-serif; font-size: 13px;
+      padding: 8px 14px; border-radius: var(--radius-sm);
+      border: 1px solid var(--border); background: var(--surface);
+      color: var(--text2); cursor: pointer;
+    }
+    .btn-ghost:hover { background: var(--surface2); }
+
+    .btn-outline {
+      font-family: 'DM Sans', sans-serif; font-size: 12px;
+      padding: 6px 12px; border-radius: var(--radius-sm);
+      border: 1px solid var(--border); background: transparent;
+      color: var(--text2); cursor: pointer;
+    }
+    .btn-outline:hover { background: var(--surface2); }
+
+    #csvInput { display: none; }
+
+    .format-hint {
+      font-size: 11px; color: var(--text3);
+      background: var(--surface2); border-radius: var(--radius-sm);
+      padding: 10px 14px; margin-bottom: 20px;
+      font-family: 'DM Mono', monospace; line-height: 1.7;
+    }
+    .format-hint strong { font-weight: 500; color: var(--text2); font-family: 'DM Sans', sans-serif; }
+
+    /* Filters */
+    .filter-bar {
+      display: flex; gap: 10px; flex-wrap: wrap;
+      align-items: center; margin-bottom: 20px;
+    }
+    .filter-bar label { font-size: 13px; color: var(--text2); }
+
+    select {
+      font-family: 'DM Sans', sans-serif; font-size: 13px;
+      padding: 7px 12px; border: 1px solid var(--border);
+      border-radius: var(--radius-sm); background: var(--surface);
+      color: var(--text); cursor: pointer; outline: none;
+    }
+    select:focus { border-color: var(--blue); }
+
+    /* KPIs */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 14px; margin-bottom: 20px;
+    }
+    .kpi {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 18px 20px;
+      position: relative; overflow: hidden;
+    }
+    .kpi::before {
+      content: ''; position: absolute;
+      top: 0; left: 0; right: 0; height: 3px;
+      border-radius: var(--radius) var(--radius) 0 0;
+    }
+    .kpi.blue::before  { background: var(--blue); }
+    .kpi.green::before { background: var(--green); }
+    .kpi.amber::before { background: var(--amber); }
+    .kpi.red::before   { background: var(--red); }
+
+    .kpi-label { font-size: 12px; color: var(--text2); font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+    .kpi-value { font-size: 26px; font-weight: 600; letter-spacing: -0.5px; margin-bottom: 6px; }
+    .kpi-delta { font-size: 12px; font-weight: 500; display: inline-flex; align-items: center; gap: 3px; padding: 2px 8px; border-radius: 20px; }
+    .delta-up   { background: var(--green-light); color: var(--green); }
+    .delta-down { background: var(--red-light);   color: var(--red); }
+
+    /* Charts */
+    .charts-row { display: grid; grid-template-columns: 2fr 1fr; gap: 14px; margin-bottom: 14px; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; }
+    .card-title { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+    .card-sub   { font-size: 12px; color: var(--text3); margin-bottom: 16px; }
+
+    .legend { display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 14px; }
+    .legend span { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text2); }
+    .leg-dot { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+    .chart-wrap { position: relative; width: 100%; }
+
+    /* Table */
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    thead th { text-align: left; font-size: 11px; font-weight: 500; color: var(--text3); text-transform: uppercase; letter-spacing: 0.5px; padding: 0 0 10px; border-bottom: 1px solid var(--border); }
+    tbody td { padding: 10px 0; border-bottom: 1px solid var(--border); color: var(--text); vertical-align: middle; }
+    tbody tr:last-child td { border-bottom: none; }
+
+    .rank { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text3); width: 20px; }
+    .bar-wrap { background: var(--surface2); border-radius: 4px; height: 6px; width: 100%; overflow: hidden; }
+    .bar-fill { height: 100%; border-radius: 4px; background: var(--blue); transition: width 0.5s ease; }
+    .badge { font-size: 11px; font-weight: 500; padding: 3px 8px; border-radius: 20px; font-family: 'DM Mono', monospace; }
+
+    footer { text-align: center; font-size: 12px; color: var(--text3); margin-top: 28px; padding-top: 20px; border-top: 1px solid var(--border); }
+
+    @media (max-width: 700px) {
+      body { padding: 14px; }
+      .charts-row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Sales &amp; Revenue Dashboard</h1>
+    <p>Business performance overview — Thiranex Internship Project</p>
+  </div>
+  <span class="status-pill pill-sample" id="dataSourcePill">&#9679; Using sample data</span>
+</header>
+
+<!-- CSV Upload -->
+<div class="upload-bar" id="uploadBar"
+     onclick="document.getElementById('csvInput').click()"
+     ondragover="onDragOver(event)"
+     ondragleave="onDragLeave(event)"
+     ondrop="onDrop(event)">
+  <div class="upload-left">
+    <div class="upload-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+        <polyline points="17 8 12 3 7 8"/>
+        <line x1="12" y1="3" x2="12" y2="15"/>
+      </svg>
+    </div>
+    <div class="upload-text">
+      <strong>Import your CSV data file</strong>
+      <span id="uploadHint">Drag &amp; drop a .csv file here, or click to browse</span>
+    </div>
+  </div>
+  <div class="upload-actions" onclick="event.stopPropagation()">
+    <button class="btn-outline" onclick="downloadSampleCSV()">&#8595; Download sample CSV</button>
+    <button class="btn-primary" onclick="document.getElementById('csvInput').click()">Choose file</button>
+    <button class="btn-ghost" id="resetBtn" style="display:none" onclick="resetToSample()">Reset to sample</button>
+  </div>
+</div>
+<input type="file" id="csvInput" accept=".csv" onchange="handleFileSelect(event)" />
+
+<div class="format-hint">
+  <strong>Expected CSV columns:</strong>
+  &nbsp;month, revenue, target, orders, category, product, units &nbsp;|&nbsp;
+  Example: <em>Jan,180000,200000,620,Electronics,Wireless Headphones,150</em>
+</div>
+
+<!-- Filters -->
+<div class="filter-bar">
+  <label>Region:</label>
+  <select id="regionFilter">
+    <option value="all">All regions</option>
+    <option value="north">North</option>
+    <option value="south">South</option>
+    <option value="east">East</option>
+    <option value="west">West</option>
+  </select>
+  <label>Category:</label>
+  <select id="catFilter" onchange="renderAll()">
+    <option value="all">All categories</option>
+    <option value="Electronics">Electronics</option>
+    <option value="Clothing">Clothing</option>
+    <option value="Home">Home</option>
+    <option value="Sports">Sports</option>
+  </select>
+</div>
+
+<!-- KPIs -->
+<div class="kpi-grid">
+  <div class="kpi blue">
+    <div class="kpi-label">Total Revenue</div>
+    <div class="kpi-value" id="kpi-rev">—</div>
+    <span class="kpi-delta delta-up" id="kpi-rev-d"></span>
+  </div>
+  <div class="kpi green">
+    <div class="kpi-label">Total Orders</div>
+    <div class="kpi-value" id="kpi-ord">—</div>
+    <span class="kpi-delta delta-up" id="kpi-ord-d"></span>
+  </div>
+  <div class="kpi amber">
+    <div class="kpi-label">Avg Order Value</div>
+    <div class="kpi-value" id="kpi-aov">—</div>
+    <span class="kpi-delta delta-up" id="kpi-aov-d"></span>
+  </div>
+  <div class="kpi red">
+    <div class="kpi-label">vs Target</div>
+    <div class="kpi-value" id="kpi-gm">—</div>
+    <span class="kpi-delta" id="kpi-gm-d"></span>
+  </div>
+</div>
+
+<!-- Charts -->
+<div class="charts-row">
+  <div class="card">
+    <div class="card-title">Monthly Revenue Trend</div>
+    <div class="card-sub">Actual vs target revenue by month</div>
+    <div class="legend">
+      <span><span class="leg-dot" style="background:#2563eb;"></span>Actual revenue</span>
+      <span><span class="leg-dot" style="background:#86efac;border:1px dashed #16a34a;"></span>Target</span>
+    </div>
+    <div class="chart-wrap" style="height:220px;">
+      <canvas id="trendChart" role="img" aria-label="Monthly revenue trend vs target"></canvas>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">Sales by Category</div>
+    <div class="card-sub">Revenue share per product category</div>
+    <div class="legend" id="catLegend"></div>
+    <div class="chart-wrap" style="height:220px;">
+      <canvas id="catChart" role="img" aria-label="Sales by category donut chart"></canvas>
+    </div>
+  </div>
+</div>
+
+<div class="card" style="margin-bottom:14px;">
+  <div class="card-title">Top Products by Revenue</div>
+  <div class="card-sub">Ranked by total revenue generated from loaded data</div>
+  <table>
+    <thead>
+      <tr>
+        <th>#</th><th>Product</th><th>Revenue</th><th>Units Sold</th>
+        <th style="width:30%">Revenue Share</th>
+      </tr>
+    </thead>
+    <tbody id="topBody"></tbody>
+  </table>
+</div>
+
+<footer>
+  Built by Iqra Raheem &nbsp;|&nbsp; Data Analytics Intern @ Thiranex &nbsp;|&nbsp; May 2026
+</footer>
+
+<script>
+  /* ── Sample Data ── */
+  const SAMPLE_ROWS = [
+    {month:'Jan',revenue:180000,target:200000,orders:620,category:'Electronics',product:'Wireless Headphones',units:150},
+    {month:'Jan',revenue:90000,target:95000,orders:310,category:'Clothing',product:'Running Shoes',units:400},
+    {month:'Jan',revenue:60000,target:65000,orders:200,category:'Home',product:'Coffee Maker',units:90},
+    {month:'Jan',revenue:45000,target:50000,orders:150,category:'Sports',product:'Yoga Mat Set',units:300},
+    {month:'Feb',revenue:100000,target:110000,orders:350,category:'Electronics',product:'Smart Watch',units:95},
+    {month:'Feb',revenue:110000,target:110000,orders:380,category:'Electronics',product:'Wireless Headphones',units:180},
+    {month:'Feb',revenue:55000,target:60000,orders:190,category:'Clothing',product:'Running Shoes',units:420},
+    {month:'Feb',revenue:40000,target:45000,orders:140,category:'Home',product:'Desk Lamp',units:110},
+    {month:'Mar',revenue:95000,target:100000,orders:330,category:'Electronics',product:'Wireless Headphones',units:160},
+    {month:'Mar',revenue:100000,target:110000,orders:345,category:'Electronics',product:'Smart Watch',units:100},
+    {month:'Mar',revenue:50000,target:55000,orders:170,category:'Sports',product:'Yoga Mat Set',units:310},
+    {month:'Apr',revenue:120000,target:125000,orders:410,category:'Electronics',product:'Smart Watch',units:120},
+    {month:'Apr',revenue:120000,target:125000,orders:420,category:'Electronics',product:'Wireless Headphones',units:200},
+    {month:'Apr',revenue:60000,target:65000,orders:210,category:'Home',product:'Coffee Maker',units:95},
+    {month:'May',revenue:130000,target:130000,orders:450,category:'Electronics',product:'Smart Watch',units:130},
+    {month:'May',revenue:130000,target:130000,orders:440,category:'Electronics',product:'Wireless Headphones',units:210},
+    {month:'Jun',revenue:115000,target:120000,orders:390,category:'Electronics',product:'Wireless Headphones',units:190},
+    {month:'Jun',revenue:115000,target:125000,orders:400,category:'Electronics',product:'Smart Watch',units:125},
+    {month:'Jun',revenue:60000,target:65000,orders:210,category:'Clothing',product:'Running Shoes',units:440},
+    {month:'Jul',revenue:137500,target:140000,orders:470,category:'Electronics',product:'Smart Watch',units:140},
+    {month:'Jul',revenue:137500,target:140000,orders:480,category:'Electronics',product:'Wireless Headphones',units:230},
+    {month:'Aug',revenue:145000,target:150000,orders:490,category:'Electronics',product:'Smart Watch',units:145},
+    {month:'Aug',revenue:145000,target:150000,orders:500,category:'Electronics',product:'Wireless Headphones',units:240},
+    {month:'Sep',revenue:155000,target:155000,orders:520,category:'Electronics',product:'Smart Watch',units:155},
+    {month:'Sep',revenue:155000,target:155000,orders:510,category:'Electronics',product:'Wireless Headphones',units:250},
+    {month:'Oct',revenue:142500,target:145000,orders:480,category:'Electronics',product:'Smart Watch',units:145},
+    {month:'Oct',revenue:142500,target:145000,orders:490,category:'Electronics',product:'Wireless Headphones',units:235},
+    {month:'Nov',revenue:165000,target:165000,orders:550,category:'Electronics',product:'Smart Watch',units:165},
+    {month:'Nov',revenue:165000,target:165000,orders:540,category:'Electronics',product:'Wireless Headphones',units:270},
+    {month:'Dec',revenue:197500,target:190000,orders:660,category:'Electronics',product:'Smart Watch',units:200},
+    {month:'Dec',revenue:197500,target:190000,orders:650,category:'Electronics',product:'Wireless Headphones',units:330},
+    {month:'Dec',revenue:100000,target:95000,orders:350,category:'Clothing',product:'Running Shoes',units:600},
+    {month:'Dec',revenue:77500,target:75000,orders:270,category:'Sports',product:'Yoga Mat Set',units:500},
+    {month:'Dec',revenue:77500,target:75000,orders:260,category:'Home',product:'Coffee Maker',units:180},
+  ];
+
+  const CAT_COLORS = {
+    'Electronics':'#2563eb','Clothing':'#16a34a','Home':'#d97706','Sports':'#dc2626'
+  };
+  const MONTH_ORDER = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+  let activeRows = SAMPLE_ROWS;
+  let trendChart, catChart;
+  let chartsInitialized = false;
+
+  /* ── CSV Parse ── */
+  function parseCSV(text) {
+    const lines = text.trim().split('\n').map(l => l.trim()).filter(Boolean);
+    if (lines.length < 2) return null;
+    const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+    const required = ['month','revenue','orders','category','product','units'];
+    const missing  = required.filter(r => !headers.includes(r));
+    if (missing.length) {
+      alert('Missing columns: ' + missing.join(', ') + '\n\nPlease check the expected format shown below the upload area.');
+      return null;
+    }
+    const rows = [];
+    for (let i = 1; i < lines.length; i++) {
+      const vals = lines[i].split(',').map(v => v.trim());
+      const row  = {};
+      headers.forEach((h, idx) => row[h] = vals[idx] || '');
+      rows.push({
+        month:    row.month,
+        revenue:  parseFloat(row.revenue) || 0,
+        target:   parseFloat(row.target)  || 0,
+        orders:   parseInt(row.orders)    || 0,
+        category: row.category,
+        product:  row.product,
+        units:    parseInt(row.units)     || 0,
+      });
+    }
+    return rows.length ? rows : null;
+  }
+
+  /* ── File Handlers ── */
+  function handleFileSelect(e) {
+    const file = e.target.files[0];
+    if (file) readFile(file);
+  }
+  function onDragOver(e)  { e.preventDefault(); document.getElementById('uploadBar').classList.add('drag-over'); }
+  function onDragLeave(e) { document.getElementById('uploadBar').classList.remove('drag-over'); }
+  function onDrop(e) {
+    e.preventDefault();
+    document.getElementById('uploadBar').classList.remove('drag-over');
+    const file = e.dataTransfer.files[0];
+    if (file && file.name.endsWith('.csv')) readFile(file);
+    else alert('Please drop a .csv file.');
+  }
+
+  function readFile(file) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      const rows = parseCSV(e.target.result);
+      if (rows) { activeRows = rows; setUploadedState(file.name); renderAll(); }
+    };
+    reader.readAsText(file);
+  }
+
+  function setUploadedState(name) {
+    document.getElementById('uploadBar').classList.add('loaded');
+    document.getElementById('uploadHint').textContent = 'Loaded: ' + name;
+    document.getElementById('resetBtn').style.display = 'inline-block';
+    const pill = document.getElementById('dataSourcePill');
+    pill.textContent = '\u25CF CSV data loaded';
+    pill.className = 'status-pill pill-csv';
+  }
+
+  function resetToSample() {
+    activeRows = SAMPLE_ROWS;
+    document.getElementById('uploadBar').classList.remove('loaded');
+    document.getElementById('uploadHint').textContent = 'Drag & drop a .csv file here, or click to browse';
+    document.getElementById('resetBtn').style.display = 'none';
+    document.getElementById('csvInput').value = '';
+    const pill = document.getElementById('dataSourcePill');
+    pill.textContent = '\u25CF Using sample data';
+    pill.className = 'status-pill pill-sample';
+    renderAll();
+  }
+
+  function downloadSampleCSV() {
+    const header = 'month,revenue,target,orders,category,product,units\n';
+    const body   = SAMPLE_ROWS.map(r =>
+      [r.month,r.revenue,r.target,r.orders,r.category,r.product,r.units].join(',')
+    ).join('\n');
+    const blob = new Blob([header + body], { type: 'text/csv' });
+    const a    = document.createElement('a');
+    a.href     = URL.createObjectURL(blob);
+    a.download = 'sample_sales_data.csv';
+    a.click();
+  }
+
+  /* ── Compute ── */
+  function computeFromRows(rows) {
+    const catF     = document.getElementById('catFilter').value;
+    const filtered = catF === 'all' ? rows : rows.filter(r => r.category === catF);
+
+    const totalRev = filtered.reduce((s,r) => s + r.revenue, 0);
+    const totalOrd = filtered.reduce((s,r) => s + r.orders,  0);
+    const totalTgt = filtered.reduce((s,r) => s + r.target,  0);
+    const aov      = totalOrd ? Math.round(totalRev / totalOrd) : 0;
+    const vsTarget = totalTgt ? Math.round((totalRev - totalTgt) / totalTgt * 100) : 0;
+
+    const monthMap = {};
+    filtered.forEach(r => {
+      if (!monthMap[r.month]) monthMap[r.month] = { rev:0, tgt:0 };
+      monthMap[r.month].rev += r.revenue;
+      monthMap[r.month].tgt += r.target;
+    });
+    const months   = MONTH_ORDER.filter(m => monthMap[m]);
+    const trendRev = months.map(m => Math.round(monthMap[m].rev / 1000));
+    const trendTgt = months.map(m => Math.round(monthMap[m].tgt / 1000));
+
+    const catMap = {};
+    filtered.forEach(r => { catMap[r.category] = (catMap[r.category]||0) + r.revenue; });
+    const cats    = Object.keys(catMap);
+    const catVals = cats.map(c => Math.round(catMap[c] / totalRev * 100));
+    const catCols = cats.map(c => CAT_COLORS[c] || '#888');
+
+    const prodMap = {};
+    filtered.forEach(r => {
+      if (!prodMap[r.product]) prodMap[r.product] = { rev:0, units:0 };
+      prodMap[r.product].rev   += r.revenue;
+      prodMap[r.product].units += r.units;
+    });
+    const products = Object.entries(prodMap)
+      .map(([name,v]) => ({ name, rev:v.rev, units:v.units }))
+      .sort((a,b) => b.rev - a.rev).slice(0, 5);
+
+    return { totalRev, totalOrd, aov, vsTarget, months, trendRev, trendTgt, cats, catVals, catCols, products };
+  }
+
+  function fmtRev(v) {
+    if (v >= 10000000) return '₹' + (v/10000000).toFixed(1) + 'Cr';
+    if (v >= 100000)   return '₹' + (v/100000).toFixed(1) + 'L';
+    return '₹' + v.toLocaleString('en-IN');
+  }
+
+  /* ── Render ── */
+  function renderAll() {
+    const d = computeFromRows(activeRows);
+
+    document.getElementById('kpi-rev').textContent = fmtRev(d.totalRev);
+    document.getElementById('kpi-ord').textContent = d.totalOrd.toLocaleString('en-IN');
+    document.getElementById('kpi-aov').textContent = '₹' + d.aov.toLocaleString('en-IN');
+    document.getElementById('kpi-gm').textContent  = (d.vsTarget >= 0 ? '+' : '') + d.vsTarget + '%';
+
+    document.getElementById('kpi-rev-d').textContent  = 'Total across all months';
+    document.getElementById('kpi-rev-d').className    = 'kpi-delta delta-up';
+    document.getElementById('kpi-ord-d').textContent  = 'Total orders placed';
+    document.getElementById('kpi-ord-d').className    = 'kpi-delta delta-up';
+    document.getElementById('kpi-aov-d').textContent  = 'Revenue ÷ total orders';
+    document.getElementById('kpi-aov-d').className    = 'kpi-delta delta-up';
+    document.getElementById('kpi-gm-d').textContent   = d.vsTarget >= 0 ? 'Above target' : 'Below target';
+    document.getElementById('kpi-gm-d').className     = 'kpi-delta ' + (d.vsTarget >= 0 ? 'delta-up' : 'delta-down');
+
+    if (!chartsInitialized) {
+      trendChart = new Chart(document.getElementById('trendChart'), {
+        type: 'line',
+        data: {
+          labels: d.months,
+          datasets: [
+            { label:'Revenue', data:d.trendRev, borderColor:'#2563eb', backgroundColor:'rgba(37,99,235,0.07)', borderWidth:2.5, pointRadius:3, pointBackgroundColor:'#2563eb', fill:true, tension:0.35 },
+            { label:'Target',  data:d.trendTgt, borderColor:'#16a34a', backgroundColor:'transparent', borderWidth:1.5, borderDash:[5,4], pointRadius:0, tension:0.35 }
+          ]
+        },
+        options: {
+          responsive:true, maintainAspectRatio:false,
+          plugins:{ legend:{ display:false } },
+          scales:{
+            x:{ ticks:{ font:{size:11,family:'DM Sans'}, autoSkip:false, maxRotation:0 }, grid:{ display:false } },
+            y:{ ticks:{ font:{size:11,family:'DM Sans'}, callback: v => '₹'+v+'K' }, grid:{ color:'rgba(0,0,0,0.05)' } }
+          }
+        }
+      });
+
+      catChart = new Chart(document.getElementById('catChart'), {
+        type: 'doughnut',
+        data: {
+          labels: d.cats,
+          datasets: [{ data:d.catVals, backgroundColor:d.catCols, borderWidth:0, hoverOffset:6 }]
+        },
+        options: {
+          responsive:true, maintainAspectRatio:false,
+          plugins:{
+            legend:{ display:false },
+            tooltip:{ callbacks:{ label: ctx => ctx.label+': '+ctx.raw+'%' } }
+          },
+          cutout:'62%'
+        }
+      });
+      chartsInitialized = true;
+    } else {
+      trendChart.data.labels = d.months;
+      trendChart.data.datasets[0].data = d.trendRev;
+      trendChart.data.datasets[1].data = d.trendTgt;
+      trendChart.update();
+      catChart.data.labels = d.cats;
+      catChart.data.datasets[0].data = d.catVals;
+      catChart.data.datasets[0].backgroundColor = d.catCols;
+      catChart.update();
+    }
+
+    document.getElementById('catLegend').innerHTML = d.cats.map((c,i) =>
+      `<span><span class="leg-dot" style="background:${d.catCols[i]};"></span>${c}</span>`
+    ).join('');
+
+    const max = d.products[0]?.rev || 1;
+    document.getElementById('topBody').innerHTML = d.products.map((p,i) => `
+      <tr>
+        <td class="rank">${i+1}</td>
+        <td>${p.name}</td>
+        <td><span class="badge" style="background:#dbeafe;color:#1d4ed8;">${fmtRev(p.rev)}</span></td>
+        <td style="color:#6b7280;">${p.units.toLocaleString('en-IN')}</td>
+        <td><div class="bar-wrap"><div class="bar-fill" style="width:${Math.round(p.rev/max*100)}%"></div></div></td>
+      </tr>
+    `).join('');
+  }
+
+  renderAll();
+</script>
+</body>
+</html>
